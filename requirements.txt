@@ -1,0 +1,9 @@
+google-cloud-bigquery==3.25.0
+google-cloud-core>=2.4.1
+google-auth==2.34.0
+pandas==2.2.2
+python-dotenv==1.0.1
+pytz
+tqdm==4.66.4
+google-api-python-client==2.141.0   # (선택) YouTube Data API client
+yt-dlp==2025.1.8

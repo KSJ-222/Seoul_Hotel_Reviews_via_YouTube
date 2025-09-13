@@ -1,0 +1,27 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Virtual env
+.venv/
+
+# Editors / OS
+.vscode/
+.DS_Store
+Thumbs.db
+
+# Secrets & env
+.env
+*.pem
+*.key
+*.pfx
+*.crt
+*.der
+
+# Data / Artifacts
+data/
+logs/
+tmp/
+.cache/
