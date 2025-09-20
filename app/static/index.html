@@ -1,0 +1,165 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Seoul Hotel Reviews (YouTube RAG)</title>
+  <style>
+    body { font-family: system-ui, Segoe UI, Roboto, Arial, sans-serif; margin: 24px; color:#111; background:#fff; }
+    h1 { margin-top:0; }
+    .row { display:flex; gap:12px; flex-wrap:wrap; }
+    label { font-size:14px; }
+    .q-label { font-weight:700; font-size:18px; }
+    input[type="text"], select, input[type="number"] { padding:8px; font-size:14px; }
+    button { padding:10px 14px; font-size:14px; cursor:pointer; }
+    .card { border:1px solid #e5e7eb; border-radius:12px; padding:16px; margin-top:16px; }
+    table { border-collapse: collapse; width:100%; margin-top:8px; }
+    th, td { border:1px solid #e5e7eb; padding:8px; text-align:left; vertical-align:top; }
+    th { background:#f9fafb; }
+    .spinner { display:none; margin-left:8px; }
+    .spinner.show { display:inline-block; animation:spin 1s linear infinite; border:3px solid #e5e7eb; border-top:3px solid #111; border-radius:50%; width:16px; height:16px; vertical-align:middle; }
+    @keyframes spin { 100% { transform: rotate(360deg); } }
+    .hint { font-size: 12px; color: #6b7280; }
+  </style>
+</head>
+<body>
+  <h1>Seoul Hotel Reviews (YouTube RAG)</h1>
+
+  <div class="card">
+    <div class="row">
+      <label><span class="q-label">Question</span><br>
+        <input id="q" type="text" size="60" placeholder="e.g., Which hotels in Seoul have great views?">
+      </label>
+
+      <label>Language<br>
+        <select id="lang_filter">
+          <option value="ALL">ALL</option>
+          <option value="en" selected>English (en)</option>
+          <option value="ko">Korean (ko)</option>
+        </select>
+      </label>
+
+      <label>Exclude paid ads?<br>
+        <select id="exclude_paid_ads">
+          <option value="true">Yes</option>
+          <option value="false">No</option>
+        </select>
+      </label>
+
+      <label>Min views<br>
+        <input id="min_views" type="number" min="0" value="0" step="1">
+      </label>
+
+      <label>Min subs<br>
+        <input id="min_subs" type="number" min="0" value="0" step="1">
+      </label>
+
+      <label>Number of citations<br>
+        <input id="top_k" type="number" min="1" value="5" step="1">
+      </label>
+    </div>
+
+    <div style="margin-top:12px;">
+      <button id="askBtn">Ask</button>
+      <span class="spinner" id="spin"></span>
+      <span class="hint">Filters are applied before retrieval.</span>
+    </div>
+  </div>
+
+  <div id="answer" class="card" style="display:block;">
+    <h2>Answer</h2>
+    <div id="summary" style="white-space:pre-wrap;"></div>
+
+    <h3 style="margin-top:16px;">Citation</h3>
+    <table>
+      <thead>
+        <tr>
+          <th>Related review</th>
+          <th>Link</th>
+          <th>Video title</th>
+          <th>Channel</th>
+        </tr>
+      </thead>
+      <tbody id="citations"></tbody>
+    </table>
+  </div>
+
+  <script>
+    const askBtn = document.getElementById('askBtn');
+    const spin = document.getElementById('spin');
+    const summaryEl = document.getElementById('summary');
+    const citationsEl = document.getElementById('citations');
+
+    function esc(s) {
+      return (s || '')
+        .replaceAll('&', '&amp;')
+        .replaceAll('<', '&lt;')
+        .replaceAll('>', '&gt;');
+    }
+
+    function toMMSS(sec) {
+      if (sec == null || isNaN(sec)) sec = 0;
+      sec = Math.max(0, Math.floor(sec));
+      const m = Math.floor(sec / 60);
+      const s = sec % 60;
+      return String(m).padStart(2, '0') + ':' + String(s).padStart(2, '0');
+    }
+
+    askBtn.addEventListener('click', async () => {
+      const payload = {
+        question: document.getElementById('q').value.trim(),
+        lang_filter: document.getElementById('lang_filter').value,
+        exclude_paid_ads: document.getElementById('exclude_paid_ads').value === 'true',
+        min_views: parseInt(document.getElementById('min_views').value || '0'),
+        min_subs: parseInt(document.getElementById('min_subs').value || '0'),
+        top_k: parseInt(document.getElementById('top_k').value || '5')
+      };
+
+      if (!payload.question) {
+        summaryEl.textContent = 'Please enter a question.';
+        citationsEl.innerHTML = '';
+        return;
+      }
+
+      summaryEl.textContent = '';
+      citationsEl.innerHTML = '';
+      spin.classList.add('show');
+
+      try {
+        const res = await fetch('/ask', {
+          method: 'POST',
+          headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify(payload)
+        });
+
+        const bodyText = await res.text();
+        let data = null;
+        try { data = JSON.parse(bodyText); } catch {}
+
+        if (!res.ok) {
+          summaryEl.textContent = 'Request failed' + (data?.detail ? `: ${data.detail}` : '');
+          citationsEl.innerHTML = '';
+          return;
+        }
+
+        summaryEl.textContent = data.summary || '(no summary)';
+        citationsEl.innerHTML = (data.citations || []).map(row => {
+          const label = toMMSS(row.evidence_sec);
+          const link = row.link ? `<a href="${row.link}" target="_blank" rel="noopener">${label}</a>` : '';
+          return `<tr>
+            <td>${esc(row.review)}</td>
+            <td>${link}</td>
+            <td>${esc(row.video_title)}</td>
+            <td>${esc(row.channel_title)}</td>
+          </tr>`;
+        }).join('');
+      } catch (e) {
+        summaryEl.textContent = 'Client error: ' + (e?.message || String(e));
+        citationsEl.innerHTML = '';
+      } finally {
+        spin.classList.remove('show');
+      }
+    });
+  </script>
+</body>
+</html>

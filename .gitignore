@@ -9,6 +9,7 @@ __pycache__/
 
 # Editors / OS
 .vscode/
+.idea/
 .DS_Store
 Thumbs.db
 
@@ -25,3 +26,4 @@ data/
 logs/
 tmp/
 .cache/
+*.log
