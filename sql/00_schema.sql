@@ -1,7 +1,7 @@
 -- sql/00_schema.sql
 -- Purpose: Create raw and processed datasets and base tables for YouTube ingestion.
 -- Inputs:  None (this script initializes datasets and empty base tables).
--- Outputs: Schemas <PROJECT_ID>.youtube_raw, <PROJECT_ID>.youtube_proc; tables: channels, videos, subtitles_segments, subtitles_full, hotel_label_meta, sponsored_label_meta.
+-- Outputs: Schemas <PROJECT_ID>.youtube_raw, <PROJECT_ID>.youtube_proc; tables: channels, videos, subtitles_segments, subtitles_full.
 -- Deps:    BigQuery permissions to CREATE SCHEMA/TABLE; location=asia-northeast3; <PROJECT_ID> replaced by $env:GCP_PROJECT_ID at run time.
 -- Run:     Invoke-BqSqlFile .\sql\00_schema.sql
 -- Notes:   Idempotent; safe to re-run.
@@ -50,17 +50,4 @@ CREATE TABLE IF NOT EXISTS `<PROJECT_ID>.youtube_raw.subtitles_full` (
   video_id STRING,
   lang STRING,
   full_text STRING
-);
-
--- Labels inferred from metadata
-CREATE TABLE IF NOT EXISTS `<PROJECT_ID>.youtube_proc.hotel_label_meta` (
-  video_id STRING,
-  is_hotel_pred BOOL,
-  judged_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP()
-);
-
-CREATE TABLE IF NOT EXISTS `<PROJECT_ID>.youtube_proc.sponsored_label_meta` (
-  video_id STRING,
-  is_paid_ad_pred BOOL,
-  judged_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP()
 );

@@ -73,31 +73,55 @@ function Invoke-BqSqlFile {
 
 ---
 
-## 3) Sign in & Data Ingest
+## 3) Sign in & Assign role
+
 First sign in:
 ```
 gcloud auth application-default login
 gcloud auth login
 ```
 
+Set your env variable & GCP Setup for BigQuery + Vertex AI (APIs, Connection, IAM)
+```powershell
+# 1) Set your project/region
+$env:GCP_PROJECT_ID = "your-project-id"
+$env:BQ_LOCATION    = "asia-northeast3"
+
+# 2) Enable APIs (BigQuery, BigQuery Connection, Vertex AI)
+gcloud services enable bigquery.googleapis.com bigqueryconnection.googleapis.com aiplatform.googleapis.com --project $env:GCP_PROJECT_ID
+
+# 3) Create a connection (name: llm_conn, location: asia-northeast3)
+bq --project_id=$env:GCP_PROJECT_ID --location=$env:BQ_LOCATION mk --connection --connection_type=CLOUD_RESOURCE llm_conn
+
+# 4) Check the connection’s service account
+$CONN_ID = "$($env:GCP_PROJECT_ID).$($env:BQ_LOCATION).llm_conn"
+bq --project_id=$env:GCP_PROJECT_ID --location=$env:BQ_LOCATION show --connection $CONN_ID
+# Copy the value of serviceAccountId from the output (e.g., connection-1234-abc@gcp-sa-bigquery-condel.iam.gserviceaccount.com)
+
+# 5) Grant the Vertex AI User role to that service account
+$SA="the-copied-serviceAccountId"
+gcloud projects add-iam-policy-binding $env:GCP_PROJECT_ID --member="serviceAccount:$SA" --role="roles/aiplatform.user"
+```
+
+---
+## 4) Data Ingest
 ### (Recommended) Method A — Rebuild service **without** fetching from YouTube (use sample data)
 This restores `youtube_raw.*` tables from `sample_data/` snapshots.
 
 ```powershell
-# 1) From repo root, go to the sample_data folder (or use absolute path)
+# From repo root, go to the sample_data folder (or use absolute path)
 cd .\sample_data
 
-# 2) Set your project/region
-$env:GCP_PROJECT_ID = "your-project-id"
-$env:BQ_LOCATION    = "asia-northeast3"
-
-# 3) One‑click restore
+# One‑click restore
 .\restore_youtube_raw.ps1
+
+# Captions
+Invoke-BqSqlFile .\sql\01_label_from_metadata.sql
 ```
 After restore, skip fetching and proceed to **Section 5** (Process transcripts → reviews → embeddings).
 
 ### Method B — Fetch via APIs (channels, videos, captions)
-> **Not recommended** for quick demos: the YouTube Data API consumes quota, and yt‑dlp caption fetches can hit HTTP 429.
+> **Not recommended** for quick demos: the YouTube Data API consumes quota, and yt‑dlp caption fetches can hit HTTP 429. I also only pulled sample subtitles from a few videos and worked with those.
 
 ```powershell
 # Prepare schemas
@@ -121,7 +145,7 @@ python -m ingest.load_to_bq --target subtitles
 
 ---
 
-## 4) Process transcripts → reviews → embeddings
+## 5) Process transcripts → reviews → embeddings
 Run in order:
 ```
 Invoke-BqSqlFile .\sql\03_review_points_from_subtitles.sql
@@ -129,7 +153,7 @@ Invoke-BqSqlFile .\sql\04_subtitles_to_chunks.sql
 Invoke-BqSqlFile .\sql\05_create_remote_embedding_model.sql
 Invoke-BqSqlFile .\sql\06_embed_chunks.sql
 Invoke-BqSqlFile .\sql\07_create_chunk_vector_index.sql
-Invoke-BqSqlFile .\sql\08_evidence_align_vindex.sql
+Invoke-BqSqlFile .\sql\08_align_evidence_to_chunks.sql
 Invoke-BqSqlFile .\sql\09_embed_review_points.sql
 Invoke-BqSqlFile .\sql\10_rag_candidates_semantic.sql
 Invoke-BqSqlFile .\sql\11_answer_from_question.sql
@@ -147,33 +171,10 @@ What these do (short):
 
 ---
 
-## 5) Run the app
+## 6) Run the app
 Start the backend:
 ```
 uvicorn app.main:app --reload --port 8080
 ```
 Open http://localhost:8080 and ask questions.
 
-Sample API call:
-```bash
-curl -X POST http://localhost:8080/ask \
-  -H 'Content-Type: application/json' \
-  -d '{
-    "question":"Which hotels in Seoul have great views?",
-    "lang_filter":"en",
-    "exclude_paid_ads":true,
-    "min_views":0,
-    "min_subs":0,
-    "top_k":5
-  }'
-```
-
-**Response shape**
-```json
-{
-  "summary": "...",
-  "citations": [
-    {"review":"Hotel X — views: ...","link":"https://youtu.be/ID?t=123s","video_title":"...","channel_title":"...","evidence_sec":123}
-  ]
-}
-```

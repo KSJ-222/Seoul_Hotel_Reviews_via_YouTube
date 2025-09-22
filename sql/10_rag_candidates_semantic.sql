@@ -44,7 +44,7 @@ AS (
       (SELECT q_text AS content)
     )
   ),
-  -- Vector search pool (top 80) filtered by language
+  -- Vector search pool (top 40) filtered by language
   vs AS (
     SELECT
       r.base.video_id,
@@ -80,7 +80,7 @@ AS (
       'embedding',
       (SELECT 1 AS qid, q.qvec AS embedding FROM q),
       'embedding',
-      top_k => 80,
+      top_k => 40,
       distance_type => 'COSINE'
     ) AS r
   ),

@@ -1,10 +1,26 @@
 -- sql/01_label_from_metadata.sql
 -- Purpose: Label each video with (A) hotel-related content and (B) sponsored/paid review using only metadata (title/description/tags).
 -- Inputs:  <PROJECT_ID>.youtube_raw.videos
--- Outputs: Upserts into <PROJECT_ID>.youtube_proc.hotel_label_meta and <PROJECT_ID>.youtube_proc.sponsored_label_meta; updates judged_at on re-label.
+-- Outputs: Create hotel_label_meta, sponsored_label_meta; Upserts into <PROJECT_ID>.youtube_proc.hotel_label_meta and <PROJECT_ID>.youtube_proc.sponsored_label_meta; updates judged_at on re-label.
 -- Deps:    BigQuery AI.GENERATE_BOOL; LLM connection <PROJECT_ID>.asia-northeast3.llm_conn; datasets/tables from 00_schema.sql.
 -- Run:     Invoke-BqSqlFile .\sql\01_label_from_metadata.sql
 -- Notes:   Idempotent; skips AI calls for already-labeled videos via NOT EXISTS filters; conservative sponsored policy.
+
+-- Datasets
+CREATE SCHEMA IF NOT EXISTS `<PROJECT_ID>.youtube_proc` OPTIONS (location = "asia-northeast3");
+
+-- Labels inferred from metadata
+CREATE TABLE IF NOT EXISTS `<PROJECT_ID>.youtube_proc.hotel_label_meta` (
+  video_id STRING,
+  is_hotel_pred BOOL,
+  judged_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP()
+);
+
+CREATE TABLE IF NOT EXISTS `<PROJECT_ID>.youtube_proc.sponsored_label_meta` (
+  video_id STRING,
+  is_paid_ad_pred BOOL,
+  judged_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP()
+);
 
 -- 1) Hotel label (metadata only: title/description/tags)
 MERGE `<PROJECT_ID>.youtube_proc.hotel_label_meta` AS T

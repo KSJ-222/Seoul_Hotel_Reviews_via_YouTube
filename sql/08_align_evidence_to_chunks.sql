@@ -1,9 +1,9 @@
--- sql/08_evidence_align_vindex.sql
+-- sql/08_align_evidence_to_chunks.sql
 -- Purpose: Align each review's evidence_quote to a timestamp using vector search first, then literal fallback, and force-fill if still unmatched.
 -- Inputs:  <PROJECT_ID>.youtube_proc.video_review_points_raw, <PROJECT_ID>.youtube_proc.chunk_embeddings, <PROJECT_ID>.youtube_proc.chunks
 -- Outputs: <PROJECT_ID>.youtube_proc.video_review_points (final), <PROJECT_ID>.youtube_proc.vrp_force_log (append), <PROJECT_ID>.youtube_proc.vrp_align_diag (report)
 -- Deps:    BigQuery remote model <PROJECT_ID>.youtube_proc.text_multi_emb; optional vector index on chunk_embeddings(embedding)
--- Run:     Invoke-BqSqlFile .\sql\08_evidence_align_vindex.sql
+-- Run:     Invoke-BqSqlFile .\sql\08_align_evidence_to_chunks.sql
 -- Notes:   Incremental & idempotent. Order: vector search → literal match → forced backfill.
 
 CREATE SCHEMA IF NOT EXISTS `<PROJECT_ID>`.youtube_proc;

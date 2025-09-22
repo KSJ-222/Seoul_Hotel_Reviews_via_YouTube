@@ -23,6 +23,10 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, JSONResponse
 from google.cloud import bigquery
 
+from dotenv import find_dotenv, load_dotenv
+
+load_dotenv(find_dotenv())
+
 PROJECT_ID = os.getenv("GCP_PROJECT_ID")
 if not PROJECT_ID:
     raise RuntimeError("GCP_PROJECT_ID env is required")
