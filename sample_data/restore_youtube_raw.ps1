@@ -91,11 +91,11 @@ Write-Host "Commit : $SQL_COMMIT"
 Write-Host ""
 
 # 1) Prepare datasets/tables
-Write-Host "[1/4] Preparing datasets & staging tables..." -ForegroundColor Cyan
+Write-Host "[1/3] Preparing datasets & staging tables..." -ForegroundColor Cyan
 Invoke-BqSqlFile $SQL_PREP
 
 # 2) Load NDJSON → staging tables
-Write-Host "[2/4] Loading NDJSON files into staging tables..." -ForegroundColor Cyan
+Write-Host "[2/3] Loading NDJSON files into staging tables..." -ForegroundColor Cyan
 foreach ($kv in $files.GetEnumerator()) {
   $table = $kv.Key
   $cands = $kv.Value
@@ -120,7 +120,7 @@ foreach ($kv in $files.GetEnumerator()) {
 }
 
 # 3) Commit (populate finals and clean up staging)
-Write-Host "[3/4] Committing to final tables & cleaning staging..." -ForegroundColor Cyan
+Write-Host "[3/3] Committing to final tables & cleaning staging..." -ForegroundColor Cyan
 Invoke-BqSqlFile $SQL_COMMIT
 
 Write-Host "`n[OK] Restore complete." -ForegroundColor Green
