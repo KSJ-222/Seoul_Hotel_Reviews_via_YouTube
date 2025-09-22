@@ -46,6 +46,9 @@ LLM_CONN=your-project.asia-northeast3.llm_conn
 ---
 
 ## 2) PowerShell helper for SQL
+
+**Note: Run all commands below (Steps 2–6) in the Visual Studio Code PowerShell terminal.**
+
 Use this function to run all SQL files (it replaces `<PROJECT_ID>` and strips comments):
 
 ```powershell
